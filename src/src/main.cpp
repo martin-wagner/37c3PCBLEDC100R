@@ -59,8 +59,6 @@ std::array<Mode*, modeCount> modes = { &mode1, &mode2, &mode3, &modeR, &modeG, &
 
 void setup()
 {
-  int seed = 1234;
-
   Serial.begin(115200); // most ESP-01's use 115200 but this could vary
   Serial.println("Startup...");
   Serial.println("Version 2025-01-09");
@@ -70,7 +68,8 @@ void setup()
   strip.show(); // Initialize all pixels to 'off'
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Set button pin as input with pull-up
 
-  srand(RANDOM_REG32);
+  auto seed = RANDOM_REG32;
+  srand(seed);
   Serial.println("Seed: " + String(seed));
 
   currentMode = EEPROM.read(EEPROM_MODE_ADDR);
