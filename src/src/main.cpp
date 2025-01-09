@@ -6,6 +6,7 @@
  */
 
 #include <Adafruit_NeoPixel.h>
+#include <EEPROM.h>
 
 #include "modeSolidColor.h"
 #include "modeRainbow.h"
@@ -18,11 +19,14 @@
 #define BUTTON_PIN D0      // Button to toggle display modes
 #define BRIGHTNESS_PIN A0  // Analog input for brightness control
 
+// Define EEPROM address for storing the mode
+#define EEPROM_MODE_ADDR 0
+
 // Initialize NeoPixel object
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_RGB + NEO_KHZ800);
 
 // Variables for brightness and button
-int currentMode = 0; // Current display mode
+uint32_t currentMode = 0; // Current display mode
 bool buttonState = false;
 bool lastButtonState = false;
 unsigned long lastButtonPress = 0;
@@ -61,12 +65,18 @@ void setup()
   Serial.println("Startup...");
   Serial.println("Version 2025-01-09");
 
+  EEPROM.begin(512); // Initialize EEPROM with 512 bytes
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Set button pin as input with pull-up
 
   srand(RANDOM_REG32);
   Serial.println("Seed: " + String(seed));
+
+  currentMode = EEPROM.read(EEPROM_MODE_ADDR);
+  if (currentMode > (modes.size() - 1)) {
+    currentMode = 0;
+  }
   Serial.println("Mode: " + String(currentMode));
 
   mode1.setup();
@@ -89,6 +99,10 @@ void loop()
     currentMode = (currentMode + 1) % modes.size(); // Cycle through modes
     lastButtonPress = millis(); // Debounce
     Serial.println("Mode: " + String(currentMode));
+
+    // Save the current mode to EEPROM
+    EEPROM.write(EEPROM_MODE_ADDR, currentMode);
+    EEPROM.commit(); // Commit changes to EEPROM
   }
   lastButtonState = buttonState;
 
