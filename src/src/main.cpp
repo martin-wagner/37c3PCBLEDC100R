@@ -7,6 +7,10 @@
 
 #include <Adafruit_NeoPixel.h>
 
+#include "modeSolidColor.h"
+#include "modeRainbow.h"
+#include "modeColorWipe.h"
+
 // Define pins and settings
 #define LED_PIN D4
 #define NUM_LEDS 8
@@ -14,7 +18,7 @@
 #define BRIGHTNESS_PIN A0  // Analog input for brightness control
 
 // Initialize NeoPixel object
-Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_RGB + NEO_KHZ800);
 
 // Variables for brightness and button
 int currentMode = 0; // Current display mode
@@ -22,111 +26,30 @@ bool buttonState = false;
 bool lastButtonState = false;
 unsigned long lastButtonPress = 0;
 
-// Base class for modes
-class Mode
-{
-  public:
-    virtual void update() = 0; // Pure virtual function for updating the mode
-};
-
-// Mode 1: Solid color
-class Mode1: public Mode
-{
-  private:
-    bool initialized = false;
-
-  public:
-    void update() override
-    {
-      if (!initialized) {
-        uint32_t color = strip.Color(255, 0, 0); // Red
-        for (int i = 0; i < strip.numPixels(); i++) {
-          strip.setPixelColor(i, color);
-        }
-        strip.show();
-        initialized = true;
-      }
-    }
-};
-
-// Mode 2: Rainbow effect (non-blocking)
-class Mode2: public Mode
-{
-  private:
-    unsigned long lastUpdate = 0;
-    int rainbowIndex = 0;
-
-  public:
-    void update() override
-    {
-      if (millis() - lastUpdate > 50) { // Non-blocking delay
-        for (int i = 0; i < strip.numPixels(); i++) {
-          int pixelIndex = (i + rainbowIndex) & 255;
-          strip.setPixelColor(i, Wheel(pixelIndex));
-        }
-        strip.show();
-        rainbowIndex = (rainbowIndex + 1) & 255; // Loop through 0-255
-        lastUpdate = millis();
-      }
-    }
-
-    // Helper function for generating rainbow colors
-    uint32_t Wheel(byte WheelPos)
-    {
-      WheelPos = 255 - WheelPos;
-      if (WheelPos < 85) {
-        return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-      } else if (WheelPos < 170) {
-        WheelPos -= 85;
-        return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-      } else {
-        WheelPos -= 170;
-        return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-      }
-    }
-};
-
-// Mode 3: Color wipe (non-blocking)
-class Mode3: public Mode
-{
-  private:
-    unsigned long lastUpdate = 0;
-    int colorWipeIndex = 0;
-    uint32_t currentColor = strip.Color(0, 0, 255); // Start with blue
-    int colorStep = 0; // Tracks which color to switch to
-
-  public:
-    void update() override
-    {
-      if (millis() - lastUpdate > 50) { // Non-blocking delay
-        strip.setPixelColor(colorWipeIndex, currentColor);
-        strip.show();
-
-        // Move to the next pixel
-        colorWipeIndex++;
-        if (colorWipeIndex >= strip.numPixels()) {
-          colorWipeIndex = 0; // Reset index
-          colorStep = (colorStep + 1) % 3; // Cycle colors
-          if (colorStep == 0)
-            currentColor = strip.Color(0, 0, 255); // Blue
-          if (colorStep == 1)
-            currentColor = strip.Color(0, 255, 0); // Green
-          if (colorStep == 2)
-            currentColor = strip.Color(255, 0, 0); // Red
-        }
-        lastUpdate = millis();
-      }
-    }
-};
+const std::array<std::tuple<uint8_t, uint8_t, uint8_t>, Colors::COUNT> color =
+{{
+  { 255, 25, 0},   //red
+  { 255, 80, 0},   //orange
+  { 255, 150, 0},  //yellow
+  { 56, 255, 0},   //green
+  { 0, 255, 112},  //turquoise
+  { 0, 0, 255},    //blue
+  { 232, 0, 212},  //pink
+}};
 
 // Instantiate the mode objects
-Mode1 mode1;
-Mode2 mode2;
-Mode3 mode3;
-const int modeCount = 3;
+ModeRainbow mode1;
+ModeColorWipe mode2;
+ModeSolidColor modeR(std::get<0>(color[RED]), std::get<1>(color[RED]), std::get<2>(color[RED]));
+ModeSolidColor modeG(std::get<0>(color[GREEN]), std::get<1>(color[GREEN]), std::get<2>(color[GREEN]));
+ModeSolidColor modeB(std::get<0>(color[BLUE]), std::get<1>(color[BLUE]), std::get<2>(color[BLUE]));
+ModeSolidColor modeYe(std::get<0>(color[YELLOW]), std::get<1>(color[YELLOW]), std::get<2>(color[YELLOW]));
+ModeSolidColor modeTk(std::get<0>(color[TURQUOISE]), std::get<1>(color[TURQUOISE]), std::get<2>(color[TURQUOISE]));
+ModeSolidColor modePi(std::get<0>(color[PINK]), std::get<1>(color[PINK]), std::get<2>(color[PINK]));
+const int modeCount = 8;
 
 // Array of mode pointers
-std::array<Mode*, modeCount> modes = { &mode1, &mode2, &mode3 };
+std::array<Mode*, modeCount> modes = { &mode1, &mode2, &modeR, &modeG, &modeB, &modeYe, &modeTk, &modePi };
 
 void setup()
 {
@@ -154,6 +77,7 @@ void loop()
   // Read digital input (D0) for mode toggle
   buttonState = !digitalRead(BUTTON_PIN); // Active LOW button
   if (buttonState && !lastButtonState && (millis() - lastButtonPress) > 500) {
+    modes[currentMode]->reset();
     currentMode = (currentMode + 1) % modes.size(); // Cycle through modes
     lastButtonPress = millis(); // Debounce
     Serial.println("Mode: " + String(currentMode));
