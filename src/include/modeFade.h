@@ -17,9 +17,9 @@ class ModeFade: public Mode
     unsigned long lastUpdate = 0;
 
     //0 ... 1023
-    uint16_t r = 512;
-    uint16_t g = 111;
-    uint16_t b = 0;
+    int r = 0;
+    int g = 0;
+    int b = 0;
 
     enum State {
       UP = 0,
@@ -28,14 +28,16 @@ class ModeFade: public Mode
       OFF
     };
 
-    State stateR = State::UP;
-    State stateG = State::UP;
+    State stateR = State::OFF;
+    State stateG = State::OFF;
     State stateB = State::OFF;
     int waitR = 0;
     int waitG = 0;
-    int waitB = 100;
+    int waitB = 0;
 
   public:
+    void setup();
+
     void reset() override
     {
       lastUpdate = 0;
@@ -44,10 +46,10 @@ class ModeFade: public Mode
     void update() override;
 
   protected:
-    void fadeColor(uint16_t &color, State &state, int &wait);
+    void fadeColor(int &color, State &state, int &wait);
 
     //intensity 0 ... 1023
-    uint8_t brightnessCorrection(uint16_t intensity);
+    uint8_t brightnessCorrection(int intensity);
 
 };
 

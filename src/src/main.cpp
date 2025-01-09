@@ -65,14 +65,11 @@ void setup()
   strip.show(); // Initialize all pixels to 'off'
   pinMode(BUTTON_PIN, INPUT_PULLUP); // Set button pin as input with pull-up
 
-  //really high quality randomness...
-  for (int i = 0; i < 10; ++i) {
-    seed = seed + (analogRead(BRIGHTNESS_PIN) >> i);
-  }
-  srand(seed);
+  srand(RANDOM_REG32);
   Serial.println("Seed: " + String(seed));
-
   Serial.println("Mode: " + String(currentMode));
+
+  mode1.setup();
 }
 
 void loop()
